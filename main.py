@@ -1,4 +1,6 @@
-import tarfile, csv, argparse, posixpath, io
+import os, tarfile, csv, argparse, posixpath, io
+import tkinter as tk
+from tkinter import messagebox
 from datetime import datetime
 
 
@@ -31,7 +33,6 @@ class ShellEmulator:
     def cp_in_tar(self, src, dest):
         """Копирование файла в tar-архиве."""
         file_data: bytes = None
-
         with tarfile.open(self.vfs_path, "r") as tar:
             file_data = tar.extractfile(src[1:]).read()
 
@@ -69,7 +70,7 @@ class ShellEmulator:
         if target_dir is not None and isinstance(target_dir, dict):
             self.current_path = new_path
             self.current_dir = target_dir
-            return ""
+            return "Changed directory to " + new_path
         else:
             return f"Error: '{new_path}' not found"
 
@@ -116,6 +117,57 @@ class ShellEmulator:
         return current
 
 
+class ShellGUI:
+    def __init__(self, emulator):
+        self.emulator = emulator
+        self.window = tk.Tk()
+        self.window.title(f"Shell - {emulator.hostname}")
+        self.window.resizable(False, False)
+        self.create_widgets()
+
+    def create_widgets(self):
+        self.output = tk.Text(self.window, height=20, width=80)
+        self.output.pack()
+        self.output.config(state=tk.DISABLED)
+
+        self.input_field = tk.Entry(self.window, width=80)
+        self.input_field.pack()
+        self.input_field.bind("<Return>", self.execute_command)
+
+    def execute_command(self, event):
+        command = self.input_field.get()
+        self.input_field.delete(0, tk.END)
+        output = ""
+        if command.startswith("ls"):
+            output = self.emulator.ls()
+        elif command.startswith("cd"):
+            args = command.split()
+            output = self.emulator.cd(args[1]) if len(args) > 1 else "Error: specify path."
+        elif command.startswith("cp"):
+            args = command.split()
+            if len(args) < 3:
+                output = "Error: specify source and destination paths."
+            else:
+                output = self.emulator.cp(args[1], args[2])
+        elif command.startswith("clear"):
+            self.output.config(state=tk.NORMAL)
+            self.output.delete("1.0", tk.END)
+            self.output.config(state=tk.DISABLED)
+        elif command.startswith("exit"):
+            self.window.quit()
+        else:
+            output = f"{command}: command not found"
+
+        if output:
+            self.output.config(state=tk.NORMAL)
+            self.output.insert(tk.END, f"$ {command}\n{output}\n")
+            self.output.config(state=tk.DISABLED)
+        self.output.see(tk.END)
+
+    def run(self):
+        self.window.mainloop()
+
+
 def main():
     parser = argparse.ArgumentParser(description="Shell Emulator")
     parser.add_argument("--hostname", required=True, help="Hostname")
@@ -124,20 +176,8 @@ def main():
     args = parser.parse_args()
 
     emulator = ShellEmulator(args.hostname, args.vfs, args.log)
-
-    while True:
-        command = input(f"{emulator.hostname}:{emulator.current_path}$ ").strip()
-        if command == "exit":
-            break
-        elif command == "ls":
-            print(emulator.ls())
-        elif command.startswith("cd "):
-            print(emulator.cd(command[3:]))
-        elif command.startswith("cp "):
-            src, dest = command[3:].split()
-            print(emulator.cp(src, dest))
-        else:
-            print("Unknown command")
+    gui = ShellGUI(emulator)
+    gui.run()
 
 
 if __name__ == "__main__":
