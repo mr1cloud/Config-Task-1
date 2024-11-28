@@ -24,6 +24,67 @@
 - **clear** — очистка экрана.
 - **cp** — копирование файлов.
 
+# Реализация функций:
+### В классе `ShellEmulator`:
+1. **`__init__`**: Инициализация эмулятора с заданными параметрами (hostname, путь к VFS и лог-файл), загрузка файловой системы из архива и настройка логирования.
+2. **`load_vfs`**: Загрузка файловой системы из tar-архива.
+3. **`cp_in_tar`**: Копирование файла внутри tar-архива.
+4. **`init_log`**: Инициализация лог-файла.
+5. **`log_action`**: Запись действий (команд) в лог.
+6. **`ls`**: Вывод содержимого текущей директории.
+7. **`cd`**: Переход в другую директорию.
+8. **`cp`**: Копирование файлов или директорий.
+9. **`navigate_to_path`**: Переход по указанному пути в файловой системе.
+
+### В классе `ShellGUI`:
+1. **`__init__`**: Инициализация графического интерфейса с эмулятором.
+2. **`create_widgets`**: Создание виджетов интерфейса (вывод и поле ввода).
+3. **`execute_command`**: Обработка и выполнение команд в GUI.
+4. **`run`**: Запуск главного цикла интерфейса.
+
 ## Тестирование:
 - Все функции эмулятора должны быть покрыты тестами.
 - Для каждой команды требуется написать 2 теста.
+
+## Функции реализованные для тестирование:
+### 1) Проверяет вывод команды ls в текущем каталоге
+```python
+def test_ls_1(self):
+    self.assertIn("home\ninfo\ntest1.txt\ntest2.txt", self.emulator.ls())
+```
+
+### 2) Проверяет вывод команды ls /home
+```python
+def test_ls_2(self):
+    self.assertIn("documents\ndownloads\ntest1.txt", self.emulator.ls("/home"))
+```
+
+### 3) Проверяет переход в корневой каталог (cd)
+```python
+def test_cd_1(self):
+    self.assertEqual(self.emulator.cd(""), "Changed directory to /")
+```
+
+### 4) Проверяет переход в каталог /home/downloads (cd /home/downloads)
+```python
+def test_cd_2(self):
+    self.assertEqual(self.emulator.cd("/home/downloads"), "Changed directory to /home/downloads")
+```
+
+### 5) Проверяет копирование файла test1.txt в test3.txt
+```python
+def test_cp_1(self):
+    self.emulator.cp("test1.txt", "test3.txt")
+    self.assertIn("test3.txt", self.emulator.ls("/"))
+```
+
+### 6) Проверяет копирование файла /home/test1.txt в /home/downloads/test4.txt
+```python
+def test_cp_2(self):
+    self.emulator.cp("/home/test1.txt", "/home/downloads/test4.txt")
+    self.assertIn("test4.txt", self.emulator.ls("/home/downloads"))
+```
+
+
+## Результаты тестирование:
+![image](https://github.com/user-attachments/assets/5fdb1339-3a3b-4765-addf-b56a4a43f594)
