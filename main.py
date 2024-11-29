@@ -47,7 +47,7 @@ class ShellEmulator:
             writer = csv.writer(log_file)
             writer.writerow(["Timestamp", "Command", "Details"])
 
-    def log_action(self, command, details=""):
+    def write_log(self, command, details=""):
         """Запись действия в лог."""
         with open(self.log_path, 'a', newline='') as log_file:
             writer = csv.writer(log_file)
@@ -61,6 +61,9 @@ class ShellEmulator:
         else:
             current_dir = self.navigate_to_path(posixpath.join(self.current_path, path))
         print(f"Current directory: {current_dir}")
+
+        self.write_log("ls", path)
+
         if current_dir is None:
             return f"Error: '{self.current_path}' not found"
         return "\n".join(current_dir.keys())
@@ -71,6 +74,9 @@ class ShellEmulator:
         print(f"Normalized path: {new_path}")
         target_dir = self.navigate_to_path(new_path)
         print(f"Target directory: {target_dir}")
+
+        self.write_log("cd", new_path)
+
         if target_dir is not None and isinstance(target_dir, dict):
             self.current_path = new_path
             self.current_dir = target_dir
@@ -104,7 +110,8 @@ class ShellEmulator:
 
         self.cp_in_tar(src_path, dest_path)
 
-        self.log_action("cp", f"{src} -> {dest}")
+        self.write_log("cp", f"{src} -> {dest}")
+
         return ""
 
     def navigate_to_path(self, path):
@@ -161,6 +168,7 @@ class ShellGUI:
             self.output.config(state=tk.NORMAL)
             self.output.delete("1.0", tk.END)
         elif command.startswith("exit"):
+            self.emulator.write_log("exit")
             self.window.quit()
         else:
             self.output.config(state=tk.NORMAL)
