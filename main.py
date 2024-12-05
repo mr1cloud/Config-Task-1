@@ -2,6 +2,7 @@ import os, tarfile, csv, argparse, posixpath, io
 import tkinter as tk
 from tkinter import messagebox
 from datetime import datetime
+from termcolor import colored
 
 
 class ShellEmulator:
@@ -64,9 +65,14 @@ class ShellEmulator:
 
         self.write_log("ls", path)
 
+        # if current_dir is None:
+        #     return f"Error: '{self.current_path}' not found"
+        # return "\n".join(current_dir.keys())
+
         if current_dir is None:
             return f"Error: '{self.current_path}' not found"
-        return "\n".join(current_dir.keys())
+
+        return [(name, isinstance(content, dict)) for name, content in current_dir.items()]
 
     def cd(self, path):
         """Переход в другую директорию."""
@@ -141,7 +147,17 @@ class ShellGUI:
         self.output.pack()
         self.output.config(state=tk.DISABLED)
 
+        self.output.tag_configure("directory", foreground="blue")
+        self.output.tag_configure("file", foreground="green")
+        self.output.tag_configure("error", foreground="red")
+        self.output.tag_configure("command", foreground="purple")
+
+        self.terminal_name = tk.Label(self.window, text=f"{self.emulator.hostname}:$")
+        self.terminal_name.pack(side=tk.LEFT)
+        self.terminal_name.pack()
+
         self.input_field = tk.Entry(self.window, width=80)
+        self.input_field.pack(side=tk.LEFT)
         self.input_field.pack()
         self.input_field.bind("<Return>", self.execute_command)
 
@@ -151,18 +167,40 @@ class ShellGUI:
         output = ""
         if command.startswith("ls"):
             self.output.config(state=tk.NORMAL)
-            output = self.emulator.ls()
+            # output = self.emulator.ls()
+            result = self.emulator.ls()
+            if isinstance(result, str):
+                self.output.insert(tk.END, f"{self.emulator.hostname}:{self.emulator.current_path}$ "
+                                           f"{command}\n{result}\n")
+            else:
+                self.output.config(state=tk.NORMAL)
+                self.output.insert(tk.END, f"{self.emulator.hostname}:{self.emulator.current_path}$ {command}\n",
+                                   "command")
+                for item, is_dir in result:
+                    tag = "directory" if is_dir else "file"
+                    self.output.insert(tk.END, item + "\n", tag)
+
         elif command.startswith("cd"):
             self.output.config(state=tk.NORMAL)
             args = command.split()
             output = self.emulator.cd(args[1]) if len(args) > 1 else "Error: specify path."
+            if not output.startswith("Error"):
+                self.output.insert(tk.END, f"{self.emulator.hostname}:{self.emulator.current_path}$ {command}\n", "command")
+                self.output.insert(tk.END, f"{output}\n", "directory")
+            else:
+                self.output.insert(tk.END, f"{self.emulator.hostname}:{self.emulator.current_path}$ {command}\n", "command")
+                self.output.insert(tk.END, f"{output}\n", "error")
         elif command.startswith("cp"):
             self.output.config(state=tk.NORMAL)
             args = command.split()
             if len(args) < 3:
-                output = "Error: specify source and destination paths."
+                self.output.insert(tk.END, f"{self.emulator.hostname}:{self.emulator.current_path}$ {command}\n", "command")
+                self.output.insert(tk.END, f"Error: specify source and destination paths.\n", "error")
             else:
                 output = self.emulator.cp(args[1], args[2])
+                self.output.insert(tk.END, f"{self.emulator.hostname}:{self.emulator.current_path}$ {command}\n", "command")
+                if output:
+                    self.output.insert(tk.END, f"{output}\n", "error")
         elif command.startswith("clear"):
             command = ""
             self.output.config(state=tk.NORMAL)
@@ -174,7 +212,7 @@ class ShellGUI:
             self.output.config(state=tk.NORMAL)
             output = f"{command}: command not found"
 
-        self.output.insert(tk.END, f"{self.emulator.hostname}:{self.emulator.current_path}$ {command}\n{output}\n")
+        # self.output.insert(tk.END, f"{self.emulator.hostname}:{self.emulator.current_path}$ {command}\n{output}\n")
         self.output.config(state=tk.DISABLED)
         self.output.see(tk.END)
 
